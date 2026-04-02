@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>结晶魔法阵 - 宽中科学组</title>
+    <style>
+        :root {
+            --primary: #4deeea;
+            --bg: #050508;
+        }
+        body { 
+            margin: 0; 
+            background: var(--bg); 
+            color: white; 
+            text-align: center; 
+            font-family: 'PingFang SC', sans-serif; 
+            overflow: hidden; 
+            touch-action: none;
+        }
+        .header { margin-top: 15px; }
+        h2 { margin: 0; font-weight: bold; letter-spacing: 3px; color: var(--primary); text-shadow: 0 0 15px rgba(77,238,234,0.6); }
+        
+        canvas { 
+            background: #000; 
+            display: block; 
+            margin: 15px auto; 
+            border: 2px solid #222;
+            border-radius: 12px; 
+            cursor: crosshair;
+            box-shadow: 0 0 40px rgba(0,0,0,1);
+        }
+
+        .controls { margin-top: 10px; }
+        button { 
+            padding: 14px 35px; 
+            font-size: 18px; 
+            border-radius: 50px; 
+            border: none; 
+            background: linear-gradient(45deg, #4deeea, #74ebd5); 
+            color: #000; 
+            cursor: pointer; 
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 0 20px rgba(77, 238, 234, 0.4);
+        }
+        button:hover { transform: translateY(-3px); box-shadow: 0 5px 25px rgba(77, 238, 234, 0.6); }
+        button:active { transform: scale(0.95); }
+        button:disabled { background: #333; color: #666; box-shadow: none; cursor: not-allowed; }
+
+        .reset-btn { background: transparent; color: #555; border: 1px solid #333; padding: 8px 20px; font-size: 14px; margin-left: 15px; }
+        .reset-btn:hover { color: #ccc; border-color: #666; }
+
+        .hint { color: #444; font-size: 0.85rem; margin-top: 10px; }
+        #status { color: #888; min-height: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>CRYSTAL MAGIC</h2>
+        <p style="color:rgba(255,255,255,0.3); font-size: 0.7rem; margin-top:5px;">FOON YEW SCIENCE CLUB</p>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+
+    <div class="controls">
+        <button id="dryBtn">💨 用吹风筒吹干！</button>
+        <button onclick="location.reload()" class="reset-btn">清空画板</button>
+    </div>
+    <p id="status">第一步：在黑色纸上画出你的魔法阵</p>
+    <p class="hint">原理：当吹风筒加热，溶剂蒸发，氯化钠颗粒会沿着轨迹结晶析出</p>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const dryBtn = document.getElementById('dryBtn');
+        const status = document.getElementById('status');
+        
+        // 设置画布大小
+        canvas.width = Math.min(window.innerWidth * 0.9, 700);
+        canvas.height = 450;
+
+        let drawing = false;
+        let points = []; // 记录所有点的坐标
+        let isDrying = false;
+
+        // --- 绘图逻辑 ---
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function startPos(e) { 
+            if(isDrying) return;
+            drawing = true; 
+            addPoint(e); 
+        }
+        function endPos() { drawing = false; ctx.beginPath(); }
+
+        function addPoint(e) {
+            if (!drawing || isDrying) return;
+            const pos = getPos(e);
+            
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'; // 极淡的水迹效果
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            
+            points.push({ x: pos.x, y: pos.y });
+        }
+
+        canvas.addEventListener('mousedown', startPos);
+        canvas.addEventListener('mousemove', addPoint);
+        window.addEventListener('mouseup', endPos);
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startPos(e); });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); addPoint(e); });
+
+        // --- 核心结晶算法 ---
+        dryBtn.onclick = () => {
+            if (points.length === 0) {
+                status.innerText = "画点什么再吹干吧！";
+                return;
+            }
+            isDrying = true;
+            dryBtn.disabled = true;
+            status.innerText = "🔥 热风强力蒸发中... 晶体正在蔓延...";
+            
+            let frame = 0;
+            const totalFrames = 120; // 结晶过程时长
+
+            function grow() {
+                // 设置为“叠加模式”，让晶体交汇处更亮，像真的发光一样
+                ctx.globalCompositeOperation = 'lighter';
+                
+                // 每次循环处理一小批随机点，让它们向外“萌发”
+                const batchSize = Math.floor(points.length / 20) + 5;
+                
+                for (let i = 0; i < batchSize; i++) {
+                    const p = points[Math.floor(Math.random() * points.length)];
+                    
+                    // 1. 绘制分形支脉 (Dendrites)
+                    const branches = 2 + Math.random() * 3;
+                    for(let j=0; j<branches; j++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const length = Math.random() * (frame / 4); // 随时间越长，分叉越远
+                        
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(200, 240, 255, ${Math.random() * 0.2})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.moveTo(p.x, p.y);
+                        const tx = p.x + Math.cos(angle) * length;
+                        const ty = p.y + Math.sin(angle) * length;
+                        ctx.lineTo(tx, ty);
+                        ctx.stroke();
+
+                        // 2. 绘制微小的方块晶核 (Salt Cubes)
+                        if(Math.random() > 0.9) {
+                            ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.8})`;
+                            const size = Math.random() * 2.5;
+                            ctx.fillRect(tx, ty, size, size);
+                        }
+                    }
+                }
+
+                // 3. 增加少量的闪烁颗粒，增加震撼感
+                if(frame % 5 === 0) {
+                    ctx.shadowBlur = Math.random() * 15;
+                    ctx.shadowColor = "rgba(255,255,255,0.5)";
+                } else {
+                    ctx.shadowBlur = 0;
+                }
+
+                frame++;
+                if (frame < totalFrames) {
+                    requestAnimationFrame(grow);
+                } else {
+                    status.innerHTML = "<span style='color:#4deeea'>✨ 结晶完成！这就是科学的艺术。</span>";
+                    // 结束后切回默认模式，确保不再有滤镜干扰
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.shadowBlur = 0;
+                }
+            }
+            grow();
+        };
+
+    </script>
+</body>
+</html>
