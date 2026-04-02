@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>物理实验：摩擦起电 - 宽中科学组</title>
+    <style>
+        :root {
+            --balloon-color: #ff5252;
+            --hair-color: #2c1e1e;
+        }
+        body {
+            margin: 0; background: #0f0f1e; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex; flex-direction: column; align-items: center; 
+            height: 100vh; overflow: hidden; touch-action: none; color: white;
+        }
+
+        /* UI 指示器 */
+        .ui-panel { width: 85%; max-width: 450px; text-align: center; z-index: 100; padding: 20px; }
+        .charge-container {
+            width: 100%; height: 20px; background: #222; border-radius: 10px;
+            border: 2px solid #673ab7; position: relative; overflow: hidden;
+        }
+        #charge-bar { 
+            width: 0%; height: 100%; 
+            background: linear-gradient(90deg, #ffee58, #ff9800, #f44336);
+            box-shadow: 0 0 20px rgba(255, 235, 59, 0.5);
+            transition: width 0.1s linear;
+        }
+        #status-msg { margin-top: 10px; font-weight: bold; font-size: 1.1rem; color: #aaa; min-height: 1.5em; }
+
+        /* 摩擦主体：同学 */
+        #character {
+            position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
+            display: flex; flex-direction: column; align-items: center;
+        }
+        #hair-zone {
+            width: 160px; height: 110px; background: var(--hair-color);
+            border-radius: 80px 80px 30px 30px; position: relative; z-index: 5;
+            transition: all 0.1s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+        /* 摩擦时的视觉效果 */
+        #hair-zone.rubbing { transform: scale(1.05) skew(2deg); background: #3d2a2a; }
+
+        #face {
+            width: 110px; height: 120px; background: #ffdbac;
+            border-radius: 0 0 55px 55px; margin-top: -30px; position: relative;
+        }
+        .eye { width: 12px; height: 12px; background: #333; border-radius: 50%; position: absolute; top: 45px; transition: 0.1s; }
+        .eye.left { left: 25px; } .eye.right { right: 25px; }
+
+        /* 气球 */
+        #balloon {
+            width: 100px; height: 130px; background: var(--balloon-color);
+            border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+            position: absolute; cursor: grab; z-index: 50;
+            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.3);
+            transform: translate(-50%, -50%); pointer-events: none;
+            transition: transform 0.05s linear;
+        }
+        #balloon::after {
+            content: ''; position: absolute; bottom: -10px; left: 45px;
+            border-left: 5px solid transparent; border-right: 5px solid transparent;
+            border-bottom: 12px solid var(--balloon-color);
+        }
+
+        /* 纸片区 */
+        #stage { position: absolute; bottom: 0; width: 100%; height: 180px; background: rgba(255,255,255,0.03); }
+        .paper-man {
+            position: absolute; bottom: 10px; font-size: 32px; 
+            pointer-events: none; transition: transform 0.1s ease-out;
+            will-change: transform, bottom;
+        }
+
+        /* 电火花粒子 */
+        .spark {
+            position: absolute; width: 4px; height: 4px; background: #75bfff;
+            box-shadow: 0 0 10px #fff; border-radius: 50%; pointer-events: none; z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ui-panel">
+        <h2 style="margin:0 0 10px 0;">⚡ 科学组：摩擦起电实验</h2>
+        <div class="charge-container"><div id="charge-bar"></div></div>
+        <div id="status-msg">请移动气球到头发上快速摩擦！</div>
+    </div>
+
+    <div id="character">
+        <div id="hair-zone"></div>
+        <div id="face">
+            <div class="eye left"></div><div class="eye right"></div>
+        </div>
+    </div>
+
+    <div id="balloon" style="left: 20%; top: 50%;"></div>
+    <div id="stage"></div>
+
+    <script>
+        let charge = 0;
+        let lastX = 0;
+        let lastY = 0;
+        
+        const balloon = document.getElementById('balloon');
+        const chargeBar = document.getElementById('charge-bar');
+        const statusMsg = document.getElementById('status-msg');
+        const hairZone = document.getElementById('hair-zone');
+        const stage = document.getElementById('stage');
+        const eyes = document.querySelectorAll('.eye');
+
+        let paperMen = [];
+        const emojis = ['🕴️', '🕺', '💃', '✨', '☁️'];
+
+        // 初始化纸片人
+        for (let i = 0; i < 18; i++) {
+            let p = document.createElement('div');
+            p.className = 'paper-man';
+            p.innerHTML = emojis[Math.floor(Math.random() * emojis.length)];
+            p.style.left = (Math.random() * 90 + 5) + '%';
+            stage.appendChild(p);
+            paperMen.push({ 
+                el: p, 
+                baseX: parseFloat(p.style.left),
+                currentY: 10,
+                currentRot: 0
+            });
+        }
+
+        function handleInput(e) {
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            // 1. 气球跟随
+            balloon.style.left = clientX + 'px';
+            balloon.style.top = clientY + 'px';
+
+            // 2. 检测摩擦
+            const hRect = hairZone.getBoundingClientRect();
+            // 碰撞检测逻辑
+            const isInside = (
+                clientX > hRect.left && clientX < hRect.right &&
+                clientY > hRect.top && clientY < hRect.bottom
+            );
+
+            if (isInside) {
+                // 计算本次位移（摩擦距离）
+                let movement = Math.sqrt(Math.pow(clientX - lastX, 2) + Math.pow(clientY - lastY, 2));
+                
+                if (movement > 2) { // 只有在移动时才增加电荷
+                    charge += movement * 0.15; 
+                    if (charge > 100) charge = 100;
+                    
+                    hairZone.classList.add('rubbing');
+                    createSpark(clientX, clientY);
+                    
+                    // 角色眼睛跟着动，表示惊讶
+                    eyes.forEach(eye => eye.style.transform = `scale(1.2) translateY(-2px)`);
+                } else {
+                    hairZone.classList.remove('rubbing');
+                }
+            } else {
+                hairZone.classList.remove('rubbing');
+                eyes.forEach(eye => eye.style.transform = `scale(1)`);
+            }
+
+            lastX = clientX;
+            lastY = clientY;
+        }
+
+        function createSpark(x, y) {
+            if (Math.random() > 0.15) return;
+            const s = document.createElement('div');
+            s.className = 'spark';
+            s.style.left = (x + (Math.random()-0.5)*60) + 'px';
+            s.style.top = (y + (Math.random()-0.5)*60) + 'px';
+            document.body.appendChild(s);
+            setTimeout(() => s.remove(), 200);
+        }
+
+        function mainLoop() {
+            // 3. 电荷自动衰减 (模拟电荷流失)
+            if (charge > 0) charge -= 0.08;
+            chargeBar.style.width = charge + '%';
+
+            // 更新状态
+            if (charge <= 0) {
+                statusMsg.innerText = "请移动气球到头发上快速摩擦！";
+                statusMsg.style.color = "#aaa";
+            } else if (charge < 90) {
+                statusMsg.innerText = "正在积攒静电... ⚡";
+                statusMsg.style.color = "#ffee58";
+            } else {
+                statusMsg.innerText = "⚡ 静电已满！去吸引纸片人跳舞！";
+                statusMsg.style.color = "#ff5252";
+            }
+
+            // 4. 纸片人物理逻辑
+            const bX = parseFloat(balloon.style.left);
+            const bY = parseFloat(balloon.style.top);
+
+            paperMen.forEach(p => {
+                const pRect = p.el.getBoundingClientRect();
+                const pCenterX = pRect.left + 16;
+                const pCenterY = pRect.top + 16;
+
+                const dx = bX - pCenterX;
+                const dy = bY - pCenterY;
+                const distance = Math.sqrt(dx*dx + dy*dy);
+                
+                // 吸引力范围受电荷量影响
+                const influenceRange = charge * 2.8;
+
+                if (distance < influenceRange && charge > 5) {
+                    const force = (influenceRange - distance) / influenceRange;
+                    const targetY = 10 + force * 150;
+                    const targetRot = dx * 0.5;
+                    
+                    p.el.style.bottom = targetY + 'px';
+                    p.el.style.transform = `translateX(${dx * 0.2}px) rotate(${targetRot}deg)`;
+                } else {
+                    // 回到原位
+                    p.el.style.bottom = '10px';
+                    p.el.style.transform = `translateX(0) rotate(0deg)`;
+                }
+            });
+
+            requestAnimationFrame(mainLoop);
+        }
+
+        // 事件监听
+        window.addEventListener('mousemove', handleInput);
+        window.addEventListener('touchmove', (e) => {
+            handleInput(e);
+            e.preventDefault();
+        }, { passive: false });
+
+        mainLoop();
+    </script>
+</body>
+</html>

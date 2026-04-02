@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>摩擦力拔河挑战 - 宽中科学组</title>
+    <style>
+        :root {
+            --book-red: #ff5252;
+            --book-blue: #2196f3;
+        }
+        body { margin: 0; background: #f0f4f8; font-family: 'Microsoft YaHei', sans-serif; text-align: center; color: #333; overflow-x: hidden; }
+        
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; position: relative; }
+        
+        /* 初始设置区域 */
+        .setup-zone {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            z-index: 100;
+            position: relative;
+        }
+
+        /* 游戏展示区域 */
+        .game-area {
+            height: 220px;
+            background: #fff;
+            position: relative;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 2px solid #ddd;
+            margin-bottom: 10px;
+        }
+
+        .book {
+            width: 100px;
+            height: 140px;
+            position: absolute;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            border-radius: 5px;
+            transition: transform 0.1s;
+        }
+        #book-left { background: var(--book-red); left: 10%; border-right: 5px solid #b71c1c; }
+        #book-right { background: var(--book-blue); right: 10%; border-left: 5px solid #0d47a1; }
+
+        .page-line { position: absolute; height: 2px; width: 80px; z-index: 5; opacity: 0.6; }
+
+        /* 进度条 */
+        .bar-container {
+            width: 100%;
+            height: 25px;
+            background: #eee;
+            border-radius: 12px;
+            margin: 15px 0;
+            overflow: hidden;
+            border: 2px solid #ccc;
+            display: none;
+        }
+        #bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #4caf50, #ffeb3b, #f44336); }
+
+        /* 按钮 */
+        button {
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+            transition: 0.2s;
+            margin: 5px;
+        }
+        #startBtn { background: #2196f3; box-shadow: 0 4px #1565c0; }
+        #pullBtn { background: #f44336; display: none; width: 80%; touch-action: manipulation; box-shadow: 0 4px #b71c1c; z-index: 10; }
+        #resetBtn { background: #757575; display: none; }
+
+        #msg { margin: 15px 0; min-height: 50px; font-weight: bold; color: #1565c0; font-size: 1.1rem; }
+
+        /* 彩纸特效样式 */
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            top: -10px;
+            z-index: 999;
+            pointer-events: none;
+        }
+
+        @keyframes fall {
+            to { transform: translateY(100vh) rotate(720deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="main">
+    <h1>📚 摩擦力拔河挑战</h1>
+
+    <div class="setup-zone" id="setup">
+        <p>选择叠入层数：<br><span id="layerVal" style="font-size: 2.5rem; color: #e91e63;">30</span> 层</p>
+        <input type="range" id="layerSlider" min="10" max="50" value="30" style="width:80%">
+        <div id="diffText" style="color: #ff9800; font-weight:bold">难度：中等</div>
+        <br>
+        <button id="startBtn">📖 开始叠页</button>
+    </div>
+
+    <div class="game-area" id="stage">
+        <div id="book-left" class="book">红书</div>
+        <div id="book-right" class="book">蓝书</div>
+    </div>
+
+    <div id="msg">调节滑块选择难度，然后点击开始</div>
+
+    <div class="bar-container" id="barBox">
+        <div id="bar-fill"></div>
+    </div>
+
+    <button id="pullBtn">💪 疯狂点击拉开！</button>
+    <br>
+    <button id="resetBtn">🔄 重新开始</button>
+</div>
+
+<script>
+    const slider = document.getElementById('layerSlider');
+    const layerVal = document.getElementById('layerVal');
+    const diffText = document.getElementById('diffText');
+    const startBtn = document.getElementById('startBtn');
+    const pullBtn = document.getElementById('pullBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const barBox = document.getElementById('barBox');
+    const barFill = document.getElementById('bar-fill');
+    const msg = document.getElementById('msg');
+    const stage = document.getElementById('stage');
+    const bookL = document.getElementById('book-left');
+    const bookR = document.getElementById('book-right');
+
+    let layers = 30;
+    let progress = 0;
+    let gameActive = false;
+    let pullTask = null;
+
+    slider.oninput = () => {
+        layers = parseInt(slider.value);
+        layerVal.innerText = layers;
+        if(layers < 20) { diffText.innerText = "难度：简单"; diffText.style.color = "#4caf50"; }
+        else if(layers < 40) { diffText.innerText = "难度：中等"; diffText.style.color = "#ff9800"; }
+        else { diffText.innerText = "难度：挑战极限！"; diffText.style.color = "#f44336"; }
+    };
+
+    startBtn.onclick = () => {
+        document.getElementById('setup').style.display = 'none';
+        barBox.style.display = 'block';
+        pullBtn.style.display = 'inline-block';
+        resetBtn.style.display = 'inline-block';
+        msg.innerText = "正在交叉书页...";
+
+        bookL.style.transition = '0.5s';
+        bookR.style.transition = '0.5s';
+        bookL.style.transform = `translateX(100px)`;
+        bookR.style.transform = `translateX(-100px)`;
+
+        for(let i=0; i<layers; i++) {
+            const line = document.createElement('div');
+            line.className = 'page-line';
+            line.style.top = (40 + (i * 140/layers)) + 'px';
+            line.style.left = (i % 2 === 0) ? '35%' : '45%';
+            line.style.background = (i % 2 === 0) ? 'var(--book-red)' : 'var(--book-blue)';
+            stage.appendChild(line);
+        }
+
+        setTimeout(() => {
+            msg.innerHTML = "<strong>准备！</strong> 疯狂点击按钮拉开！";
+            gameActive = true;
+            bookL.style.transition = '0.1s';
+            bookR.style.transition = '0.1s';
+            startDecay();
+        }, 800);
+    };
+
+    pullBtn.onclick = () => {
+        if(!gameActive) return;
+        let increment = Math.max(0.8, 12 - (layers * 0.22)); 
+        progress += increment;
+        updateVisuals();
+        if(progress >= 100) win();
+    };
+
+    function startDecay() {
+        if(pullTask) clearInterval(pullTask);
+        pullTask = setInterval(() => {
+            if(!gameActive) return;
+            let decay = 0.4 + (layers * 0.08);
+            if(progress > 0) {
+                progress -= decay;
+                updateVisuals();
+            }
+        }, 100);
+    }
+
+    function updateVisuals() {
+        progress = Math.max(0, Math.min(100, progress));
+        barFill.style.width = progress + '%';
+        let pullDist = progress / 3;
+        bookL.style.left = `calc(10% + 100px - ${pullDist}px)`;
+        bookR.style.right = `calc(10% + 100px - ${pullDist}px)`;
+        if(progress > 90) stage.style.background = "#ffebee";
+    }
+
+    // 重点：胜利特效
+    function win() {
+        gameActive = false;
+        clearInterval(pullTask);
+        pullBtn.style.display = 'none';
+        
+        // 1. 音效：生成欢呼声
+        playVictorySound();
+
+        // 2. 动画：书本猛烈弹开
+        bookL.style.transition = '0.5s cubic-bezier(0.1, 0.9, 0.2, 1)';
+        bookR.style.transition = '0.5s cubic-bezier(0.1, 0.9, 0.2, 1)';
+        bookL.style.transform = 'translateX(-400px) rotate(-45deg)';
+        bookR.style.transform = 'translateX(400px) rotate(45deg)';
+        
+        // 3. 特效：撒碎纸屑
+        for(let i=0; i<60; i++) {
+            createConfetti();
+        }
+
+        document.querySelectorAll('.page-line').forEach(el => el.style.opacity = '0');
+        msg.innerHTML = `<span style="font-size:1.5rem; color:#4caf50">🎊 挑战成功！🎊</span><br>你克服了 ${layers} 层书页的超级摩擦力！`;
+    }
+
+    // 模拟音效
+    function playVictorySound() {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const notes = [
+            {f: 523, t: 0}, {f: 659, t: 0.1}, {f: 783, t: 0.2}, {f: 1046, t: 0.4}
+        ];
+        notes.forEach(note => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.frequency.value = note.f;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime + note.t);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + note.t + 0.4);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(audioCtx.currentTime + note.t);
+            osc.stop(audioCtx.currentTime + note.t + 0.5);
+        });
+    }
+
+    // 撒纸屑逻辑
+    function createConfetti() {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = Math.random() * 100 + 'vw';
+        confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+        confetti.style.width = (Math.random() * 8 + 5) + 'px';
+        confetti.style.height = (Math.random() * 8 + 5) + 'px';
+        confetti.style.animation = `fall ${Math.random() * 2 + 1}s linear forwards`;
+        document.body.appendChild(confetti);
+        setTimeout(() => confetti.remove(), 3000);
+    }
+
+    resetBtn.onclick = () => location.reload();
+</script>
+
+</body>
+</html>
