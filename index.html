@@ -1,34 +1,118 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>宽中科学组：实验室大冒险</title>
     <style>
-        body { font-family: sans-serif; background: #e3f2fd; text-align: center; padding: 20px; }
-        h1 { color: #1565c0; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 30px; }
-        .btn { 
-            padding: 20px; background: white; border-radius: 15px; 
-            text-decoration: none; color: #333; font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.3s;
+        :root {
+            --primary: #1565c0;
+            --bg: #f0f7ff;
+            --card-bg: #ffffff;
         }
-        .btn:active { transform: scale(0.95); }
-        .rainbow { border-top: 5px solid #ff6b6b; }
-        .egg { border-top: 5px solid #ffd93d; }
-        .disco { border-top: 5px solid #6c5ce7; }
-        .diver { border-top: 5px solid #00cec9; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background: var(--bg); 
+            color: #333; 
+            margin: 0; 
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { 
+            color: var(--primary); 
+            margin-bottom: 5px; 
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subtitle { 
+            color: #666; 
+            margin-bottom: 30px; 
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+        }
+
+        .grid { 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 18px; 
+            width: 100%; 
+            max-width: 400px; 
+        }
+
+        /* 宽屏平板支持 */
+        @media (min-width: 600px) {
+            .grid { grid-template-columns: 1fr 1fr; max-width: 600px; }
+        }
+
+        .btn { 
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 20px; 
+            background: var(--card-bg); 
+            border-radius: 20px; 
+            text-decoration: none; 
+            color: #444; 
+            font-weight: 700;
+            font-size: 1.1rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05); 
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 2px solid transparent;
+        }
+
+        .btn:active { transform: scale(0.95); box-shadow: 0 5px 10px rgba(0,0,0,0.1); }
+
+        .icon { font-size: 1.5rem; margin-right: 15px; }
+
+        /* 各个按钮的特色边框色 */
+        .density { border-left: 8px solid #ff6b6b; }
+        .friction { border-left: 8px solid #4dabf7; }
+        .static { border-left: 8px solid #be4bdb; }
+        .submarine { border-left: 8px solid #20c997; }
+        .crystal { border-left: 8px solid #fab005; }
+
+        footer {
+            margin-top: 40px;
+            font-size: 0.8rem;
+            color: #aaa;
+        }
     </style>
 </head>
 <body>
+
     <h1>🧪 科学实验室大冒险</h1>
-    <p>新山宽柔中学科学组 荣誉出品</p>
-  <div class="grid">
-    <a href="density.html" class="btn rainbow">🌈 彩虹瓶</a>
-    <a href="friction.html" class="btn friction">📚 摩擦力拔河</a>
-    <a href="staticelectric.html" class="btn disco">⚡ 静电舞</a>
-    <a href="submarinegame.html" class="btn diver">🌊 沉浮子</a>
-    <a href="crystal.html" class="btn crystal">🧂 结晶魔法阵</a>
-</div>
+    <p class="subtitle">新山宽柔中学科学组 荣誉出品</p>
+
+    <div class="grid">
+        <a href="density.html" class="btn density">
+            <span class="icon">🌈</span> 彩虹瓶挑战
+        </a>
+
+        <a href="friction.html" class="btn friction">
+            <span class="icon">📚</span> 摩擦力拔河
+        </a>
+
+        <a href="staticelectric.html" class="btn static">
+            <span class="icon">⚡</span> 静电迪斯科
+        </a>
+
+        <a href="submarinegame.html" class="btn submarine">
+            <span class="icon">🌊</span> 沉浮潜水员
+        </a>
+
+        <a href="crystal.html" class="btn crystal">
+            <span class="icon">🧂</span> 结晶魔法阵
+        </a>
+    </div>
+
+    <footer>&copy; 2026 FOON YEW HIGH SCHOOL SCIENCE DEPT.</footer>
+
 </body>
 </html>
