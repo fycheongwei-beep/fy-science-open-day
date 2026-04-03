@@ -2,117 +2,93 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 核心修正：禁止用户缩放，防止快速点击时页面抖动 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>摩擦力拔河挑战 - 宽中科学组</title>
     <style>
         :root {
             --book-red: #ff5252;
             --book-blue: #2196f3;
         }
-        body { margin: 0; background: #f0f4f8; font-family: 'Microsoft YaHei', sans-serif; text-align: center; color: #333; overflow-x: hidden; }
+        body { 
+            margin: 0; background: #f0f4f8; 
+            font-family: 'Microsoft YaHei', sans-serif; 
+            text-align: center; color: #333; 
+            overflow: hidden; /* 防止手机上滑动 */
+            touch-action: manipulation; /* 优化点击速度 */
+        }
         
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; position: relative; }
+        .container { max-width: 600px; margin: 0 auto; padding: 15px; position: relative; }
         
         /* 初始设置区域 */
         .setup-zone {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            z-index: 100;
-            position: relative;
+            background: white; padding: 20px; border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px;
+            position: relative; z-index: 100;
         }
 
         /* 游戏展示区域 */
         .game-area {
-            height: 220px;
-            background: #fff;
-            position: relative;
-            border-radius: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            border: 2px solid #ddd;
-            margin-bottom: 10px;
+            height: 200px; background: #fff; position: relative;
+            border-radius: 15px; overflow: hidden;
+            border: 2px solid #ddd; margin-bottom: 10px;
+            display: flex; align-items: center; justify-content: center;
         }
 
         .book {
-            width: 100px;
-            height: 140px;
-            position: absolute;
-            z-index: 10;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            border-radius: 5px;
-            transition: transform 0.1s;
+            width: 90px; height: 130px; position: absolute;
+            z-index: 10; display: flex; align-items: center; justify-content: center;
+            color: white; font-weight: bold; border-radius: 5px;
+            /* 初始状态不设 transition，由 JS 控制 */
         }
-        #book-left { background: var(--book-red); left: 10%; border-right: 5px solid #b71c1c; }
-        #book-right { background: var(--book-blue); right: 10%; border-left: 5px solid #0d47a1; }
+        /* 使用 transform 初始定位，性能更好 */
+        #book-left { background: var(--book-red); left: 0; border-right: 5px solid #b71c1c; transform: translateX(20px); }
+        #book-right { background: var(--book-blue); right: 0; border-left: 5px solid #0d47a1; transform: translateX(-20px); }
 
-        .page-line { position: absolute; height: 2px; width: 80px; z-index: 5; opacity: 0.6; }
+        .page-line { position: absolute; height: 2px; width: 60px; z-index: 5; opacity: 0.5; }
 
         /* 进度条 */
         .bar-container {
-            width: 100%;
-            height: 25px;
-            background: #eee;
-            border-radius: 12px;
-            margin: 15px 0;
-            overflow: hidden;
-            border: 2px solid #ccc;
-            display: none;
+            width: 100%; height: 20px; background: #eee;
+            border-radius: 10px; margin: 15px 0; overflow: hidden;
+            border: 1px solid #ccc; display: none;
         }
-        #bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #4caf50, #ffeb3b, #f44336); }
+        #bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #4caf50, #ffeb3b, #f44336); transition: width 0.1s; }
 
         /* 按钮 */
         button {
-            padding: 12px 30px;
-            font-size: 1.1rem;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            color: white;
-            font-weight: bold;
-            transition: 0.2s;
-            margin: 5px;
+            padding: 15px 30px; font-size: 1.1rem; border: none;
+            border-radius: 50px; cursor: pointer; color: white;
+            font-weight: bold; transition: transform 0.1s; margin: 5px;
+            -webkit-tap-highlight-color: transparent; /* 去除手机点击阴影 */
         }
         #startBtn { background: #2196f3; box-shadow: 0 4px #1565c0; }
-        #pullBtn { background: #f44336; display: none; width: 80%; touch-action: manipulation; box-shadow: 0 4px #b71c1c; z-index: 10; }
+        #pullBtn { 
+            background: #f44336; display: none; width: 90%; 
+            height: 60px; /* 加大按钮，方便手机操作 */
+            box-shadow: 0 6px #b71c1c; font-size: 1.4rem;
+        }
+        #pullBtn:active { transform: translateY(3px); box-shadow: 0 2px #b71c1c; }
         #resetBtn { background: #757575; display: none; }
 
-        #msg { margin: 15px 0; min-height: 50px; font-weight: bold; color: #1565c0; font-size: 1.1rem; }
+        #msg { margin: 10px 0; min-height: 45px; font-weight: bold; color: #1565c0; font-size: 1rem; }
 
-        /* 彩纸特效样式 */
-        .confetti {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            top: -10px;
-            z-index: 999;
-            pointer-events: none;
-        }
-
-        @keyframes fall {
-            to { transform: translateY(100vh) rotate(720deg); }
-        }
+        /* 纸屑 */
+        .confetti { position: absolute; width: 8px; height: 8px; top: -10px; z-index: 99; pointer-events: none; }
+        @keyframes fall { to { transform: translateY(100vh) rotate(720deg); } }
     </style>
 </head>
 <body>
 
-<div class="container" id="main">
+<div class="container">
     <h1>📚 摩擦力拔河挑战</h1>
 
     <div class="setup-zone" id="setup">
-        <p>选择叠入层数：<br><span id="layerVal" style="font-size: 2.5rem; color: #e91e63;">30</span> 层</p>
-        <input type="range" id="layerSlider" min="10" max="50" value="30" style="width:80%">
+        <p>选择叠入层数：<br><span id="layerVal" style="font-size: 2.2rem; color: #e91e63;">30</span> 层</p>
+        <input type="range" id="layerSlider" min="10" max="50" value="30" style="width:90%">
         <div id="diffText" style="color: #ff9800; font-weight:bold">难度：中等</div>
         <br>
-        <button id="startBtn">📖 开始叠页</button>
+        <button id="startBtn">📖 开始实验</button>
     </div>
 
     <div class="game-area" id="stage">
@@ -120,28 +96,24 @@
         <div id="book-right" class="book">蓝书</div>
     </div>
 
-    <div id="msg">调节滑块选择难度，然后点击开始</div>
+    <div id="msg">调节滑块选择难度</div>
 
     <div class="bar-container" id="barBox">
         <div id="bar-fill"></div>
     </div>
 
-    <button id="pullBtn">💪 疯狂点击拉开！</button>
-    <br>
+    <button id="pullBtn">💪 疯狂拉开！</button>
     <button id="resetBtn">🔄 重新开始</button>
 </div>
 
 <script>
     const slider = document.getElementById('layerSlider');
     const layerVal = document.getElementById('layerVal');
-    const diffText = document.getElementById('diffText');
     const startBtn = document.getElementById('startBtn');
     const pullBtn = document.getElementById('pullBtn');
     const resetBtn = document.getElementById('resetBtn');
-    const barBox = document.getElementById('barBox');
     const barFill = document.getElementById('bar-fill');
     const msg = document.getElementById('msg');
-    const stage = document.getElementById('stage');
     const bookL = document.getElementById('book-left');
     const bookR = document.getElementById('book-right');
 
@@ -150,57 +122,69 @@
     let gameActive = false;
     let pullTask = null;
 
+    // 滑块逻辑
     slider.oninput = () => {
         layers = parseInt(slider.value);
         layerVal.innerText = layers;
-        if(layers < 20) { diffText.innerText = "难度：简单"; diffText.style.color = "#4caf50"; }
-        else if(layers < 40) { diffText.innerText = "难度：中等"; diffText.style.color = "#ff9800"; }
-        else { diffText.innerText = "难度：挑战极限！"; diffText.style.color = "#f44336"; }
+        const diff = document.getElementById('diffText');
+        if(layers < 20) { diff.innerText = "难度：简单"; diff.style.color = "#4caf50"; }
+        else if(layers < 40) { diff.innerText = "难度：中等"; diff.style.color = "#ff9800"; }
+        else { diff.innerText = "难度：挑战极限！"; diff.style.color = "#f44336"; }
     };
 
+    // 1. 开始叠页
     startBtn.onclick = () => {
         document.getElementById('setup').style.display = 'none';
-        barBox.style.display = 'block';
+        document.getElementById('barBox').style.display = 'block';
         pullBtn.style.display = 'inline-block';
         resetBtn.style.display = 'inline-block';
-        msg.innerText = "正在交叉书页...";
+        msg.innerText = "正在重叠书页...";
 
-        bookL.style.transition = '0.5s';
-        bookR.style.transition = '0.5s';
-        bookL.style.transform = `translateX(100px)`;
-        bookR.style.transform = `translateX(-100px)`;
+        // 动画进入：两本书靠拢
+        bookL.style.transition = 'transform 0.6s ease';
+        bookR.style.transition = 'transform 0.6s ease';
+        bookL.style.transform = 'translateX(110px)'; // 居中
+        bookR.style.transform = 'translateX(-110px)';
 
+        // 生成书页线条
         for(let i=0; i<layers; i++) {
             const line = document.createElement('div');
             line.className = 'page-line';
-            line.style.top = (40 + (i * 140/layers)) + 'px';
-            line.style.left = (i % 2 === 0) ? '35%' : '45%';
+            line.style.top = (40 + (i * 120/layers)) + 'px';
+            line.style.left = (i % 2 === 0) ? '38%' : '44%';
             line.style.background = (i % 2 === 0) ? 'var(--book-red)' : 'var(--book-blue)';
-            stage.appendChild(line);
+            document.getElementById('stage').appendChild(line);
         }
 
         setTimeout(() => {
-            msg.innerHTML = "<strong>准备！</strong> 疯狂点击按钮拉开！";
+            msg.innerHTML = "<strong>准备！</strong> 疯狂点击拉开按钮！";
             gameActive = true;
-            bookL.style.transition = '0.1s';
-            bookR.style.transition = '0.1s';
+            // 核心：拔河开始后，关闭 transition，防止移动跳跃
+            bookL.style.transition = 'none';
+            bookR.style.transition = 'none';
             startDecay();
-        }, 800);
+        }, 700);
     };
 
-    pullBtn.onclick = () => {
+    // 2. 拔河逻辑（针对手机优化）
+    pullBtn.onclick = (e) => {
         if(!gameActive) return;
-        let increment = Math.max(0.8, 12 - (layers * 0.22)); 
+        e.preventDefault(); // 阻止默认行为
+
+        // 点击增加进度，根据层数动态计算增量
+        let increment = Math.max(0.6, 12 - (layers * 0.22)); 
         progress += increment;
+        
         updateVisuals();
         if(progress >= 100) win();
     };
 
+    // 进度自动衰减
     function startDecay() {
         if(pullTask) clearInterval(pullTask);
         pullTask = setInterval(() => {
             if(!gameActive) return;
-            let decay = 0.4 + (layers * 0.08);
+            let decay = 0.4 + (layers * 0.08); // 层数越多，掉得越快
             if(progress > 0) {
                 progress -= decay;
                 updateVisuals();
@@ -208,70 +192,63 @@
         }, 100);
     }
 
+    // 3. 实时更新位置（不使用 Transition，使用 JS 逐帧计算）
     function updateVisuals() {
         progress = Math.max(0, Math.min(100, progress));
         barFill.style.width = progress + '%';
-        let pullDist = progress / 3;
-        bookL.style.left = `calc(10% + 100px - ${pullDist}px)`;
-        bookR.style.right = `calc(10% + 100px - ${pullDist}px)`;
-        if(progress > 90) stage.style.background = "#ffebee";
+        
+        // 计算移动距离
+        // 初始位置是 110px (重叠状态)，目标位置是 20px (拉开状态)
+        let currentPos = 110 - (progress * 0.9); 
+        bookL.style.transform = `translateX(${currentPos}px)`;
+        bookR.style.transform = `translateX(-${currentPos}px)`;
     }
 
-    // 重点：胜利特效
+    // 4. 胜利逻辑
     function win() {
         gameActive = false;
         clearInterval(pullTask);
         pullBtn.style.display = 'none';
         
-        // 1. 音效：生成欢呼声
+        // 播放内置声音
         playVictorySound();
 
-        // 2. 动画：书本猛烈弹开
-        bookL.style.transition = '0.5s cubic-bezier(0.1, 0.9, 0.2, 1)';
-        bookR.style.transition = '0.5s cubic-bezier(0.1, 0.9, 0.2, 1)';
-        bookL.style.transform = 'translateX(-400px) rotate(-45deg)';
-        bookR.style.transform = 'translateX(400px) rotate(45deg)';
+        // 飞出动画：这时候可以开启 Transition 了
+        bookL.style.transition = 'transform 0.5s cubic-bezier(0.1, 0.9, 0.2, 1)';
+        bookR.style.transition = 'transform 0.5s cubic-bezier(0.1, 0.9, 0.2, 1)';
+        bookL.style.transform = 'translateX(-300px) rotate(-30deg)';
+        bookR.style.transform = 'translateX(300px) rotate(30deg)';
         
-        // 3. 特效：撒碎纸屑
-        for(let i=0; i<60; i++) {
-            createConfetti();
-        }
+        // 撒花
+        for(let i=0; i<50; i++) createConfetti();
 
-        document.querySelectorAll('.page-line').forEach(el => el.style.opacity = '0');
-        msg.innerHTML = `<span style="font-size:1.5rem; color:#4caf50">🎊 挑战成功！🎊</span><br>你克服了 ${layers} 层书页的超级摩擦力！`;
+        msg.innerHTML = `<span style="font-size:1.4rem; color:#4caf50">🎊 成功拉开！🎊</span><br>你战胜了 ${layers} 层的摩擦力！`;
     }
 
-    // 模拟音效
+    // 声音生成器
     function playVictorySound() {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const notes = [
-            {f: 523, t: 0}, {f: 659, t: 0.1}, {f: 783, t: 0.2}, {f: 1046, t: 0.4}
-        ];
-        notes.forEach(note => {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.frequency.value = note.f;
-            osc.type = 'sine';
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime + note.t);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + note.t + 0.4);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(audioCtx.currentTime + note.t);
-            osc.stop(audioCtx.currentTime + note.t + 0.5);
-        });
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            [523, 659, 783, 1046].forEach((f, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.frequency.value = f;
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime + i*0.1);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i*0.1 + 0.4);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + i*0.1); osc.stop(audioCtx.currentTime + i*0.1 + 0.5);
+            });
+        } catch(e) {}
     }
 
-    // 撒纸屑逻辑
     function createConfetti() {
         const confetti = document.createElement('div');
         confetti.className = 'confetti';
         confetti.style.left = Math.random() * 100 + 'vw';
         confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
-        confetti.style.width = (Math.random() * 8 + 5) + 'px';
-        confetti.style.height = (Math.random() * 8 + 5) + 'px';
         confetti.style.animation = `fall ${Math.random() * 2 + 1}s linear forwards`;
         document.body.appendChild(confetti);
-        setTimeout(() => confetti.remove(), 3000);
+        setTimeout(() => confetti.remove(), 2000);
     }
 
     resetBtn.onclick = () => location.reload();
